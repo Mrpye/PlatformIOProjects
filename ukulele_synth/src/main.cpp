@@ -50,6 +50,7 @@ uint16_t lasttouched = 0;
 uint16_t currtouched = 0;
 const byte ROWS = 4; //four rows
 const byte COLS = 4; //four columns
+int Current_Chord = 0;
 //define the cymbols on the buttons of the keypads
 char hexaKeys[ROWS][COLS] = {
     {'3', '2', '1', '0'},
@@ -137,6 +138,8 @@ void touch_event(int num, int Current_Chord)
     {
       chord = Cminor;
     }
+     //Serial.println("majour");
+     break;
   case 1:
     if (majour == true)
     {
@@ -156,6 +159,7 @@ void touch_event(int num, int Current_Chord)
     {
       chord = Eminor;
     }
+    break;
   case 3:
     if (majour == true)
     {
@@ -165,6 +169,7 @@ void touch_event(int num, int Current_Chord)
     {
       chord = Fminor;
     }
+    break;
   case 4:
     if (majour == true)
     {
@@ -174,6 +179,7 @@ void touch_event(int num, int Current_Chord)
     {
       chord = Gminor;
     }
+    break;
   case 5:
     if (majour == true)
     {
@@ -183,6 +189,7 @@ void touch_event(int num, int Current_Chord)
     {
       chord = Aminor;
     }
+    break;
   case 6:
     if (majour == true)
     {
@@ -192,21 +199,30 @@ void touch_event(int num, int Current_Chord)
     {
       chord = Bminor;
     }
+    break;
   default:
-    chord = Fmajor;
+    chord = nochord;
+   
   }
-
-Serial.println(Current_Chord);
-   //Left just strum the strings
+ //chord = nochord;
+  //Serial.println(Current_Chord);
+  //Serial.println(chord[1]);
+  //Left just strum the strings
   if (num == 0)
   {
+
     if (chord[0] > 20.0)
+    {
+      //Serial.println("aaa");
       string1.noteOn(chord[0], 1.0);
+    }
   }
   else if (num == 1)
   {
     if (chord[1] > 20.0)
+    {
       string2.noteOn(chord[1], 1.0);
+    }
   }
   else if (num == 2)
   {
@@ -221,12 +237,12 @@ Serial.println(Current_Chord);
   else if (num == 4)
   {
     if (chord[4] > 20.0)
-      string4.noteOn(chord[3], 1.0);
+      string5.noteOn(chord[4], 1.0);
   }
   else if (num == 5)
   {
     if (chord[5] > 20.0)
-      string4.noteOn(chord[3], 1.0);
+      string6.noteOn(chord[5], 1.0);
   }
 }
 
@@ -252,26 +268,27 @@ float KeyMap(char c)
 
 void setup()
 {
+delay(1000);
+ // while (!Serial)
+//  { // needed to keep leonardo/micro from starting too fast!
+  //  delay(10);
+ // }
 
-  while (!Serial)
-  { // needed to keep leonardo/micro from starting too fast!
-    delay(10);
-  }
-
-  Serial.println("Adafruit MPR121 Capacitive Touch sensor test");
+  //Serial.println("Adafruit MPR121 Capacitive Touch sensor test");
 
   // Default address is 0x5A, if tied to 3.3V its 0x5B
   // If tied to SDA its 0x5C and if SCL then 0x5D
   if (!cap.begin(0x5A))
   {
-    Serial.println("MPR121 not found, check wiring?");
+    //Serial.println("MPR121 not found, check wiring?");
     while (1)
       ;
   }
-  Serial.println("MPR121 found!");
+  //Serial.println("MPR121 found!");
 
-  pinMode(9, INPUT_PULLUP);
-  Serial.begin(9600);
+  //pinMode(9, INPUT_PULLUP);
+  pinMode(1, INPUT_PULLUP);
+ // Serial.begin(9600);
   AudioMemory(15);
   SetupPots();
   dac1.analogReference(INTERNAL); // normal volume
@@ -296,19 +313,17 @@ void loop()
   int pot2 = ReadPot(1, A7);
   int pot3 = ReadPot(2, A0);
 
-//front A6
-//middle is A7
-//back is A0
+  //front A6
+  //middle is A7
+  //back is A0
 
   int mix = map(pot1, 1, 1023, 0, 100);
   int roomsize = map(pot2, 1, 1023, 0, 100);
   int damp = map(pot3, 1, 1023, 0, 100);
-//Serial.print("mix");
- /// Serial.println(mix);
+  //Serial.print("mix");
+  /// Serial.println(mix);
   //Serial.println(roomsize);
   // Serial.println(damp);
-
-
 
   float channel1mix = float(mix) / 100;
   float channel2mix = 1 - channel1mix;
@@ -321,15 +336,16 @@ void loop()
 
   currtouched = cap.touched();
 
-  int Current_Chord = 0;
   for (uint8_t i = 0; i < 7; i++)
   {
     // it if *is* touched and *wasnt* touched before, alert!
     if ((currtouched & _BV(i)) && !(lasttouched & _BV(i)))
     {
-      Serial.print(i);
-      Serial.println(" touched");
+     // SerSerial.print(i);
+     // Serial.println(" touched");
       Current_Chord = i;
+      //Serial.print(Current_Chord);
+      break;
     }
     // if it *was* touched and now *isnt*, alert!
     // if (!(currtouched & _BV(i)) && (lasttouched & _BV(i)))
@@ -343,14 +359,12 @@ void loop()
   lasttouched = currtouched;
 
   // comment out this line for detailed data from the sensor!
-  return;
 
   if (button0.fallingEdge())
   {
-    Serial.println("Oracle Application Express");
+   // Serial.println("Oracle Application Express");
     majour = !majour;
   }
-  
 
   int s[TOUCH_INPUTS];
   int i, diff, variance;
@@ -365,6 +379,7 @@ void loop()
 
   if (startup)
   {
+
     for (i = 0; i < TOUCH_INPUTS; i++)
     {
       avg[i] += s[i];
@@ -378,12 +393,13 @@ void loop()
   {
     diff = s[i] - avg[i];
     variance = diff / (avg[i] >> 10);
-    Serial.printf("%6d ", variance);
+    //Serial.printf("%6d ", variance);
     if (touched[i] == false)
     {
       if (variance >= VARIANCE_TOUCH)
       {
         touched[i] = true;
+        Serial.println(i);
         touch_event(i, Current_Chord);
       }
     }
