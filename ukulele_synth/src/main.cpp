@@ -1,11 +1,20 @@
+
+#ifndef _BV
+#define _BV(bit) (1 << (bit))
+#endif
+
 #include <Arduino.h>
 #include <keypad.h>
 #include <Audio.h>
 #include "chords.h"
 #include <Bounce.h>
+#include <Wire.h>
+#include "Adafruit_MPR121.h"
+
 // GUItool: begin automatically generated code
 
-Bounce button0 = Bounce(2, 5);
+Bounce button0 = Bounce(1, 5);
+
 // GUItool: begin automatically generated code
 AudioSynthKarplusStrong string1; //xy=66,132
 AudioSynthKarplusStrong string2; //xy=99,171
@@ -32,7 +41,13 @@ AudioConnection patchCord11(mixer3, dac1);
 // GUItool: end automatically generated code
 
 // GUItool: end automatically generated code
+// You can have up to 4 on one i2c bus but one is enough for testing!
+Adafruit_MPR121 cap = Adafruit_MPR121();
 
+// Keeps track of the last pins touched
+// so we know when buttons are 'released'
+uint16_t lasttouched = 0;
+uint16_t currtouched = 0;
 const byte ROWS = 4; //four rows
 const byte COLS = 4; //four columns
 //define the cymbols on the buttons of the keypads
@@ -52,7 +67,6 @@ void strum_up(const float *chord, float velocity);
 void strum_dn(const float *chord, float velocity);
 
 const int TOUCH_INPUTS = 6;
-
 bool touched[TOUCH_INPUTS];
 int avg[TOUCH_INPUTS];
 int startup = 64;
@@ -108,33 +122,13 @@ int ReadPot(int pot_index, int pot_pin)
   return pot_average[pot_index];
 }
 
-void touch_event(int num)
+void touch_event(int num, int Current_Chord)
 {
   const float *chord;
-  if (lastpressed == ' ')
+
+  switch (Current_Chord)
   {
-    if (majour == true)
-    {
-      chord = Fmajor;
-    }
-    else
-    {
-      chord = Fminor;
-    }
-  }
-  else if (lastpressed == '0')
-  {
-    if (majour == true)
-    {
-      chord = Fmajor;
-    }
-    else
-    {
-      chord = Fminor;
-    }
-  }
-  else if (lastpressed == '1')
-  {
+  case 0:
     if (majour == true)
     {
       chord = Cmajor;
@@ -143,21 +137,7 @@ void touch_event(int num)
     {
       chord = Cminor;
     }
-  }
-  else if (lastpressed == '2')
-  {
-
-    if (majour == true)
-    {
-      chord = Gmajor;
-    }
-    else
-    {
-      chord = Gminor;
-    }
-  }
-  else if (lastpressed == '3')
-  {
+  case 1:
     if (majour == true)
     {
       chord = Dmajor;
@@ -166,20 +146,8 @@ void touch_event(int num)
     {
       chord = Dminor;
     }
-  }
-  else if (lastpressed == '4')
-  {
-    if (majour == true)
-    {
-      chord = Amajor;
-    }
-    else
-    {
-      chord = Aminor;
-    }
-  }
-  else if (lastpressed == '5')
-  {
+    break;
+  case 2:
     if (majour == true)
     {
       chord = Emajor;
@@ -188,20 +156,7 @@ void touch_event(int num)
     {
       chord = Eminor;
     }
-  }
-  else if (lastpressed == '6')
-  {
-    if (majour == true)
-    {
-      chord = Bmajor;
-    }
-    else
-    {
-      chord = Bminor;
-    }
-  }
-  else
-  {
+  case 3:
     if (majour == true)
     {
       chord = Fmajor;
@@ -210,8 +165,39 @@ void touch_event(int num)
     {
       chord = Fminor;
     }
+  case 4:
+    if (majour == true)
+    {
+      chord = Gmajor;
+    }
+    else
+    {
+      chord = Gminor;
+    }
+  case 5:
+    if (majour == true)
+    {
+      chord = Amajor;
+    }
+    else
+    {
+      chord = Aminor;
+    }
+  case 6:
+    if (majour == true)
+    {
+      chord = Bmajor;
+    }
+    else
+    {
+      chord = Bminor;
+    }
+  default:
+    chord = Fmajor;
   }
-  //Left just strum the strings
+
+Serial.println(Current_Chord);
+   //Left just strum the strings
   if (num == 0)
   {
     if (chord[0] > 20.0)
@@ -231,11 +217,13 @@ void touch_event(int num)
   {
     if (chord[3] > 20.0)
       string4.noteOn(chord[3], 1.0);
-  }else if (num == 4)
+  }
+  else if (num == 4)
   {
     if (chord[4] > 20.0)
-      string4.noteOn(chord[3], 1.0);9
-  }else if (num == 5)
+      string4.noteOn(chord[3], 1.0);
+  }
+  else if (num == 5)
   {
     if (chord[5] > 20.0)
       string4.noteOn(chord[3], 1.0);
@@ -264,7 +252,25 @@ float KeyMap(char c)
 
 void setup()
 {
-    pinMode(9, INPUT_PULLUP);
+
+  while (!Serial)
+  { // needed to keep leonardo/micro from starting too fast!
+    delay(10);
+  }
+
+  Serial.println("Adafruit MPR121 Capacitive Touch sensor test");
+
+  // Default address is 0x5A, if tied to 3.3V its 0x5B
+  // If tied to SDA its 0x5C and if SCL then 0x5D
+  if (!cap.begin(0x5A))
+  {
+    Serial.println("MPR121 not found, check wiring?");
+    while (1)
+      ;
+  }
+  Serial.println("MPR121 found!");
+
+  pinMode(9, INPUT_PULLUP);
   Serial.begin(9600);
   AudioMemory(15);
   SetupPots();
@@ -286,55 +292,65 @@ void setup()
 
 void loop()
 {
-  int pot1 = ReadPot(0, A0);
-  int pot2 = ReadPot(1, A6);
-  int pot3 = ReadPot(2, A7);
+  int pot1 = ReadPot(0, A6);
+  int pot2 = ReadPot(1, A7);
+  int pot3 = ReadPot(2, A0);
+
+//front A6
+//middle is A7
+//back is A0
+
   int mix = map(pot1, 1, 1023, 0, 100);
   int roomsize = map(pot2, 1, 1023, 0, 100);
   int damp = map(pot3, 1, 1023, 0, 100);
+//Serial.print("mix");
+ /// Serial.println(mix);
+  //Serial.println(roomsize);
+  // Serial.println(damp);
 
-  //Serial.println(float(damp)/100);
-  float channel1mix=float(mix)/100;
-  float channel2mix=1-channel1mix;
+
+
+  float channel1mix = float(mix) / 100;
+  float channel2mix = 1 - channel1mix;
   mixer3.gain(0, channel1mix);
   mixer3.gain(1, channel2mix);
 
-  freeverb1.roomsize(float(roomsize)/100);
-  freeverb1.damping(float(damp)/100);
+  freeverb1.roomsize(float(roomsize) / 100);
+  freeverb1.damping(float(damp) / 100);
   button0.update();
 
-  if(button0.fallingEdge()){
+  currtouched = cap.touched();
+
+  int Current_Chord = 0;
+  for (uint8_t i = 0; i < 7; i++)
+  {
+    // it if *is* touched and *wasnt* touched before, alert!
+    if ((currtouched & _BV(i)) && !(lasttouched & _BV(i)))
+    {
+      Serial.print(i);
+      Serial.println(" touched");
+      Current_Chord = i;
+    }
+    // if it *was* touched and now *isnt*, alert!
+    // if (!(currtouched & _BV(i)) && (lasttouched & _BV(i)))
+    //  {
+    // Serial.print(i);
+    //  Serial.println(" released");
+    // }
+  }
+
+  // reset our state
+  lasttouched = currtouched;
+
+  // comment out this line for detailed data from the sensor!
+  return;
+
+  if (button0.fallingEdge())
+  {
     Serial.println("Oracle Application Express");
     majour = !majour;
   }
-
-  if (customKeypad.getKeys())
-  {
-    for (int i = 0; i < LIST_MAX; i++)
-    {
-      if (customKeypad.key[i].stateChanged) // Only find keys that have changed state.
-      {
-        if (customKeypad.key[i].kstate == PRESSED)
-        {
-          Serial.println(customKeypad.key[i].kchar);
-          if (customKeypad.key[i].kchar == 'F')
-          {
-            majour = true;
-            Serial.println("majour");
-          }
-          else if (customKeypad.key[i].kchar == 'E')
-          {
-            majour = false;
-            Serial.println("minor");
-          }
-          else
-          {
-            lastpressed = customKeypad.key[i].kchar;
-          }
-        }
-      }
-    }
-  }
+  
 
   int s[TOUCH_INPUTS];
   int i, diff, variance;
@@ -362,13 +378,13 @@ void loop()
   {
     diff = s[i] - avg[i];
     variance = diff / (avg[i] >> 10);
-    //Serial.printf("%6d ", variance);
+    Serial.printf("%6d ", variance);
     if (touched[i] == false)
     {
       if (variance >= VARIANCE_TOUCH)
       {
         touched[i] = true;
-        touch_event(i);
+        touch_event(i, Current_Chord);
       }
     }
     else
