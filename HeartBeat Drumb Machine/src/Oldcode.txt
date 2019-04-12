@@ -1,0 +1,158 @@
+#include <Arduino.h>
+#include <Audio.h>
+#include <Keypad.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
+#include <SerialFlash.h>
+#include <synth_simple_drum.h>
+
+// GUItool: begin automatically generated code
+AudioSynthSimpleDrum drum2; //xy=399,244
+AudioSynthSimpleDrum drum3; //xy=424,310
+AudioSynthSimpleDrum drum1; //xy=431,197
+AudioSynthSimpleDrum drum4; //xy=464,374
+AudioMixer4 mixer1;         //xy=737,265
+AudioOutputAnalog i2s1;     //xy=979,214
+AudioConnection patchCord1(drum2, 0, mixer1, 1);
+AudioConnection patchCord2(drum3, 0, mixer1, 2);
+AudioConnection patchCord3(drum1, 0, mixer1, 0);
+AudioConnection patchCord4(drum4, 0, mixer1, 3);
+AudioConnection patchCord5(mixer1, 0, i2s1, 0);
+AudioConnection patchCord6(mixer1, 0, i2s1, 1);
+AudioControlSGTL5000 sgtl5000_1; //xy=930,518
+// GUItool: end automatically generated code
+int led = 13;
+
+const byte ROWS = 4; //four rows
+const byte COLS = 3; //three columns
+char keys[ROWS][COLS] = {
+    {'1', '2', '3'},
+    {'4', '5', '6'},
+    {'7', '8', '9'},
+    {'*', '0', '#'}};
+
+byte rowPins[ROWS] = {7, 6, 5, 4}; //connect to the row pinouts of the keypad
+byte colPins[COLS] = {1, 2, 3};    //connect to the column pinouts of the keypad
+
+Keypad kpd = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+static uint32_t next;
+static uint32_t total;
+
+void setup()
+{
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  // audio library init
+  AudioMemory(15);
+  AudioNoInterrupts();
+
+  pinMode(led, OUTPUT);
+
+  drum1.frequency(60);
+  drum1.length(1500);
+  drum1.secondMix(0.0);
+  drum1.pitchMod(0.55);
+
+  drum2.frequency(60);
+  drum2.length(300);
+  drum2.secondMix(0.0);
+  drum2.pitchMod(1.0);
+
+  drum3.frequency(550);
+  drum3.length(400);
+  drum3.secondMix(1.0);
+  drum3.pitchMod(0.5);
+
+  drum4.frequency(1200);
+  drum4.length(150);
+  drum4.secondMix(0.0);
+  drum4.pitchMod(0.0);
+
+  sgtl5000_1.enable();
+  sgtl5000_1.volume(0.5);
+
+  AudioInterrupts();
+}
+
+bool ledon = false;
+int pattern[4][16] = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+int pattern_index = 0;
+int temp=100;
+
+void loop()
+{
+
+
+  int aval=analogRead(A5);
+  temp=map(aval,0,1023,10,150);
+  Serial.println(temp);
+
+  // put your main code here, to run repeatedly:
+  char key = kpd.getKey();
+
+  if (millis() >= next)
+  {
+    next = millis() + temp ;
+    pattern_index = pattern_index + 1;
+    if (pattern_index > 16)
+    { 
+      pattern_index = 0;
+      ledon = !ledon;
+    digitalWrite(led, ledon); // turn the LED on (HIGH is the voltage level)
+    }
+
+    for (int i = 0; i < 4; i++)
+    {
+      if (pattern[i][pattern_index] == 1)
+      {
+        switch (i)
+        {
+        case 0:
+          drum1.noteOn();
+          break;
+        case 1:
+          drum2.noteOn();
+          break;
+        case 2:
+          drum3.noteOn();
+          break;
+        case 3:
+          drum4.noteOn();
+          break;
+        }
+      }
+    }
+
+    
+  }
+
+  if (key == '7')
+  {
+    //pattern_index = map(total, 0, 1600, 0, 16);
+    pattern[0][pattern_index] = !pattern[0][pattern_index];
+    drum1.noteOn();
+  }
+  else if (key == '4')
+  {
+    //pattern_index = map(total, 0, 1600, 0, 16);
+    pattern[1][pattern_index] = !pattern[1][pattern_index];
+    drum2.noteOn();
+  }
+  else if (key == '1')
+  {
+    pattern[2][pattern_index] = !pattern[2][pattern_index];
+    drum2.noteOn();
+  }
+  else if (key == '8')
+  {
+    pattern[3][pattern_index] = !pattern[3][pattern_index];
+    drum2.noteOn(); 
+  }
+  
+  if (key)
+    Serial.println(key);
+}
