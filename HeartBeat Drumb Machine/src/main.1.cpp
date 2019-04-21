@@ -106,9 +106,9 @@ void loop() {
   lasttouchedA = currtouchedA;
   lasttouchedB = currtouchedB;
 
-  for (uint8_t i = 0; i < 16; i++) {
+ //for (uint8_t i = 0; i < 16; i++) {
    // Serial.print(pattern[current_sound][i]);
-  }
+  //}
  // Serial.print("CURRENT SOUND");
   //Serial.println(current_sound);
 }
