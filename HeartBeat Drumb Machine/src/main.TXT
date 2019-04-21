@@ -18,8 +18,8 @@ Adafruit_MPR121 capb = Adafruit_MPR121();
 
 // String sounds[] = {"C1.TRW", "D1.TRW", "E1.TRW", "F1.TRW",
 //                   "G1.TRW", "A1.TRW", "B1.TRW", "C2.TRW"};
-String sounds[] = {"KICK.RAW", "SNARE.RAW", "CLAP.RAW", "HIHAT.RAW",
-                   "CHIME3.TRW", "KISS.RAW", "B1.TRW", "C2.TRW"};
+String sounds[] = {"KICK.RAW",   "SNARE.RAW", "CLAP.RAW", "HIHAT.RAW",
+                   "CHIME3.TRW", "KISS.RAW",  "B1.TRW",   "C2.TRW"};
 
 // Keeps track of the last pins touched
 // so we know when buttons are 'released'
@@ -27,18 +27,21 @@ uint16_t lasttoucheda = 0;
 uint16_t currtoucheda = 0;
 uint16_t lasttouchedb = 0;
 uint16_t currtouchedb = 0;
+
 const int FlashChipSelect = 6; // digital pin for flash chip CS pin
 const int PLAYERS = 32;
 
+/*
 //Pin connected to ST_CP of 74HC595
 int latchPin = 1;
 //Pin connected to SH_CP of 74HC595
 int clockPin = 0;
 ////Pin connected to DS of 74HC595
 int dataPin = 8;
+
 byte dataRED;
 byte dataGREEN;
-
+*/
 
 // GUItool: begin automatically generated code
 AudioPlaySerialflashRaw sound[] = {
@@ -130,12 +133,10 @@ char *string2char(String str) {
 }
 static uint32_t next;
 
-int pattern[4][16] = {
-{0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0},
-{0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0},
-{0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0},
-{0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0}
-};
+int pattern[4][16] = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 int pattern_index = 0;
 int current_sound = 0;
 int temp = 100;
@@ -149,12 +150,14 @@ void setup() {
   Serial.println("Setup");
   if (!capa.begin(0x5A)) {
     Serial.println("MPR121 a not found, check wiring?");
-    while (1);
+    while (1)
+      ;
   }
   Serial.println("MPR121 a found!");
-    if (!capb.begin(0x5B)) {
+  if (!capb.begin(0x5B)) {
     Serial.println("MPR121 b not found, check wiring?");
-    while (1);
+    while (1)
+      ;
   }
   Serial.println("MPR121 b found!");
 
@@ -199,54 +202,53 @@ void setup() {
   mix15.gain(0, 0.5);
   mix15.gain(1, 0.5);
 
-  pinMode(latchPin, OUTPUT);
-  pinMode(dataPin, OUTPUT);
-  pinMode(clockPin, OUTPUT);
+  // pinMode(latchPin, OUTPUT);
+  // pinMode(dataPin, OUTPUT);
+  // pinMode(clockPin, OUTPUT);
 }
 // the heart of the program
 void shiftOut(int myDataPin, int myClockPin, byte myDataOut) {
-  // This shifts 8 bits out MSB first, 
-  //on the rising edge of the clock,
-  //clock idles low
+  // This shifts 8 bits out MSB first,
+  // on the rising edge of the clock,
+  // clock idles low
 
-  //internal function setup
-  int i=0;
+  // internal function setup
+  int i = 0;
   int pinState;
   pinMode(myClockPin, OUTPUT);
   pinMode(myDataPin, OUTPUT);
 
-  //clear everything out just in case to
-  //prepare shift register for bit shifting
+  // clear everything out just in case to
+  // prepare shift register for bit shifting
   digitalWrite(myDataPin, 0);
   digitalWrite(myClockPin, 0);
 
-  //for each bit in the byte myDataOut�
-  //NOTICE THAT WE ARE COUNTING DOWN in our for loop
-  //This means that %00000001 or "1" will go through such
-  //that it will be pin Q0 that lights. 
-  for (i=7; i>=0; i--)  {
+  // for each bit in the byte myDataOut�
+  // NOTICE THAT WE ARE COUNTING DOWN in our for loop
+  // This means that %00000001 or "1" will go through such
+  // that it will be pin Q0 that lights.
+  for (i = 7; i >= 0; i--) {
     digitalWrite(myClockPin, 0);
 
-    //if the value passed to myDataOut and a bitmask result 
+    // if the value passed to myDataOut and a bitmask result
     // true then... so if we are at i=6 and our value is
-    // %11010100 it would the code compares it to %01000000 
+    // %11010100 it would the code compares it to %01000000
     // and proceeds to set pinState to 1.
-    if ( myDataOut & (1<<i) ) {
-      pinState= 1;
-    }
-    else {  
-      pinState= 0;
+    if (myDataOut & (1 << i)) {
+      pinState = 1;
+    } else {
+      pinState = 0;
     }
 
-    //Sets the pin to HIGH or LOW depending on pinState
+    // Sets the pin to HIGH or LOW depending on pinState
     digitalWrite(myDataPin, pinState);
-    //register shifts bits on upstroke of clock pin  
+    // register shifts bits on upstroke of clock pin
     digitalWrite(myClockPin, 1);
-    //zero the data pin after shift to prevent bleed through
+    // zero the data pin after shift to prevent bleed through
     digitalWrite(myDataPin, 0);
   }
 
-  //stop shifting
+  // stop shifting
   digitalWrite(myClockPin, 0);
 }
 
@@ -257,95 +259,90 @@ void PlaySound(int i) {
   } else {
     sound[i].play(string2char(sounds[i]));
   }
-  
 }
+
+
+
+
 void loop() {
 
   // Get the currently touched pads
-  int aval=analogRead(A6);
-   temp=map(aval,0,1023,50,300);
+  int aval = analogRead(A6);
+  temp = map(aval, 0, 1023, 50, 300);
 
   currtoucheda = capa.touched();
   currtouchedb = capb.touched();
   // Serial.println(currtoucheda);
+  /*
+    for (uint8_t i = 8; i < 12; i++) {
+      if ((currtoucheda & _BVA(i)) && !(lasttoucheda & _BVA(i))) {
+        Serial.print(i);
+        Serial.println("A touched SOUND SELECT");
+        current_sound = i - 8;
+        break;
+      }
+    }*/
 
-  for (uint8_t i = 8; i < 12; i++) {
-    if ((currtoucheda & _BVA(i)) && !(lasttoucheda & _BVA(i))) {
-      Serial.print(i);
-      Serial.println("A touched SOUND SELECT");
-      current_sound = i - 8;
-      break;
-    }
-  }
-  for (uint8_t i = 8; i < 12; i++) {
-    if ((currtouchedb & _BVB(i)) && !(lasttouchedb & _BVB(i))) {
-      Serial.print(i);
-      Serial.println("B touched SOUND SELECT");
-      current_sound = i - 8;
-      break;
-    }
-  }
   for (uint8_t i = 0; i < 16; i++) {
     // cap.setThreshholds(40,1);
     // it if *is* touched and *wasnt* touched before, alert!
-    if(i<8){
+    if (i < 11) {
       if ((currtoucheda & _BVA(i)) && !(lasttoucheda & _BVA(i))) {
         Serial.print(i);
         Serial.println(" touched PATTERN A");
-        pattern[current_sound][i] = !pattern[current_sound][i];
+        // pattern[current_sound][i] = !pattern[current_sound][i];
       }
-    }else{
-       if ((currtouchedb & _BVB(i-8)) && !(lasttouchedb & _BVB(i-8))) {
+    } else {
+      if ((currtouchedb & _BVB(i - 11)) && !(lasttouchedb & _BVB(i - 11))) {
         Serial.print(i);
         Serial.println(" touched PATTERN B");
-        pattern[current_sound][i] = !pattern[current_sound][i];
+        // pattern[current_sound][i] = !pattern[current_sound][i];
       }
     }
+    /*
+        if (millis() >= next) {
+          next = millis() + temp;
+          pattern_index = pattern_index + 1;
+          if (pattern_index > 16) {
+            pattern_index = 0;
+          }
+          for (int i = 0; i < 4; i++) {
+            /// Serial.print(pattern_index);
+            // Serial.print(":");
+            // Serial.println(pattern[i][pattern_index]);
 
-    if (millis() >= next) {
-      next = millis() + temp;
-      pattern_index = pattern_index + 1;
-      if (pattern_index > 16) {
-        pattern_index = 0;
+            if (pattern[i][pattern_index] == 1) {
+              //PlaySound(i);
+            }
+          }
+        }
       }
-      for (int i = 0; i < 4; i++) {
-       /// Serial.print(pattern_index);
-       //Serial.print(":");
-       // Serial.println(pattern[i][pattern_index]);
+    */
+    // dataRED = 0;
+    // dataGREEN = 0;
+    // digitalWrite(latchPin, 0);
 
-        if (pattern[i][pattern_index] == 1) {
-          PlaySound(i);
+    for (int j = 0; j < 16; j++) {
+      if (j > 7) {
+        // bitSet( dataGREEN,j-8);
+        if (pattern[current_sound][j] == 1) {
+          Serial.println(j - 8);
+          // bitSet(dataRED, j - 8);
+        }
+      } else {
+        // bitSet( dataRED,j);
+        if (pattern[current_sound][j] == 1) {
+          Serial.println(j);
+          /// bitSet(dataGREEN, j);
         }
       }
     }
+
+    // shiftOut(dataPin, clockPin, dataGREEN);
+    // shiftOut(dataPin, clockPin, dataRED);
+    // digitalWrite(latchPin, 1);
+
+    lasttoucheda = currtoucheda;
+    lasttouchedb = currtouchedb;
   }
-dataRED=0;
-    dataGREEN=0;
-
-for (int j = 0; j < 16; j++) {
-    
-   // bitSet( dataGREEN,j);
-    //bitSet( dataRED,j);
-    digitalWrite(latchPin, 0);
-    Serial.println(pattern_index);
-    //Serial.println(pattern[current_sound][pattern_index]);
-    if(j>7){
-        bitSet( dataGREEN,j-8);
-       if (pattern[current_sound][pattern_index] == 1) {
-     // bitSet( dataGREEN,pattern_index-8);
-       }
-    }else{
-       bitSet( dataRED,j);
-       if (pattern[current_sound][pattern_index] == 1) {
-     // bitSet( dataRED,pattern_index);
-       }
-    }
-    shiftOut(dataPin, clockPin, dataGREEN);   
-    shiftOut(dataPin, clockPin, dataRED);
-    digitalWrite(latchPin, 1);
-   
-}
-
-  lasttoucheda = currtoucheda;
-   lasttouchedb = currtouchedb;
 }
